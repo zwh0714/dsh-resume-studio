@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>简历工坊 · 在线试用</title>
+<meta name="description" content="粘贴 JSON 实时预览简历：三套版式、A4/Letter、自动压页、写作检查。无需安装。">
+<style>
+  :root {
+    --bg: #f6f7f9;
+    --panel: #fff;
+    --line: #e3e6ea;
+    --text: #1f2329;
+    --muted: #6b7280;
+    --accent: #1a5fb4;
+    --ok: #2f6f4f;
+    --warn: #a06000;
+    --err: #b3261e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font: 14px/1.6 -apple-system, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--text); background: var(--bg); height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    padding: 14px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 16px; font-weight: 700; }
+  header .tag { color: var(--muted); font-size: 13px; }
+  header .links { margin-left: auto; display: flex; gap: 12px; font-size: 13px; }
+  header a { color: var(--accent); text-decoration: none; }
+  header a:hover { text-decoration: underline; }
+
+  .bar {
+    padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  .bar .group { display: flex; gap: 6px; align-items: center; }
+  .bar label { color: var(--muted); font-size: 13px; }
+  button {
+    font: inherit; font-size: 13px; padding: 5px 12px; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff; color: var(--text); cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  select, input[type=number] {
+    font: inherit; font-size: 13px; padding: 5px 8px; border-radius: 6px;
+    border: 1px solid var(--line); background: #fff;
+  }
+  input[type=number] { width: 64px; }
+  .swatches { display: inline-flex; gap: 4px; }
+  .swatch {
+    width: 20px; height: 20px; padding: 0; border-radius: 50%;
+    border: 2px solid transparent; box-shadow: 0 0 0 1px var(--line) inset;
+  }
+  .swatch:hover { border-color: var(--muted); }
+  .swatch.active { border-color: var(--text); }
+
+  main { flex: 1; display: grid; grid-template-columns: minmax(280px, 1fr) minmax(320px, 1.15fr); gap: 1px; background: var(--line); overflow: hidden; }
+  .pane { background: var(--panel); display: flex; flex-direction: column; overflow: hidden; }
+  .pane > .hd {
+    padding: 8px 14px; font-size: 12px; color: var(--muted); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 8px;
+  }
+  textarea {
+    flex: 1; width: 100%; border: 0; resize: none; padding: 14px;
+    font: 12.5px/1.65 ui-monospace, "Cascadia Code", Consolas, monospace;
+    color: var(--text); background: var(--panel); tab-size: 2;
+  }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -2px; }
+  iframe { flex: 1; width: 100%; border: 0; background: #e9ebee; }
+
+  #report {
+    border-top: 1px solid var(--line); padding: 10px 14px; max-height: 168px; overflow: auto;
+    font-size: 12.5px; background: var(--panel);
+  }
+  #report .sum { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 6px; color: var(--muted); }
+  #report .sum b { color: var(--text); font-weight: 600; }
+  #report ul { list-style: none; display: flex; flex-direction: column; gap: 3px; }
+  #report li { display: flex; gap: 8px; align-items: baseline; }
+  #report .lv { flex: none; width: 44px; font-weight: 600; font-size: 11px; text-transform: uppercase; }
+  #report .lv.error { color: var(--err); }
+  #report .lv.warn { color: var(--warn); }
+  #report .lv.info { color: var(--muted); }
+  #report .where { color: var(--muted); flex: none; }
+  #report .empty { color: var(--ok); }
+
+  .toast {
+    position: fixed; left: 50%; bottom: 26px; transform: translateX(-50%);
+    background: #1f2329; color: #fff; padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; opacity: 0; pointer-events: none; transition: opacity .18s;
+  }
+  .toast.show { opacity: 1; }
+
+  @media (max-width: 860px) {
+    main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>简历工坊</h1>
+  <span class="tag">粘贴 JSON 实时预览简历：三套版式、主题微调、A4 / Letter、写作检查</span>
+  <span class="links">
+    <a href="https://github.com/zwh0714/dsh-resume-studio" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://github.com/deepseek-ai/deepseek-harness" target="_blank" rel="noopener">DeepSeek Harness</a>
+  </span>
+</header>
+
+<div class="bar">
+  <div class="group">
+    <label>版式</label>
+    <button data-tpl="classic" class="active">classic 经典蓝线</button>
+    <button data-tpl="minimal">minimal 极简黑白</button>
+    <button data-tpl="sidebar">sidebar 侧栏信息带</button>
+  </div>
+  <div class="group">
+    <label>纸张</label>
+    <select id="pageSize">
+      <option value="A4">A4</option>
+      <option value="Letter">Letter</option>
+    </select>
+    <label>页数</label>
+    <input type="number" id="maxPages" min="1" max="5" value="2">
+  </div>
+  <div class="group">
+    <label>主色</label>
+    <span class="swatches" id="swatches">
+      <button class="swatch" data-color="#1A5FB4" style="background:#1A5FB4" title="经典蓝"></button>
+      <button class="swatch" data-color="#0F766E" style="background:#0F766E" title="墨青"></button>
+      <button class="swatch" data-color="#8C2F39" style="background:#8C2F39" title="酒红"></button>
+      <button class="swatch" data-color="#2F6F4F" style="background:#2F6F4F" title="松绿"></button>
+      <button class="swatch" data-color="#5B4BB7" style="background:#5B4BB7" title="靛紫"></button>
+      <button class="swatch" data-color="#111111" style="background:#111111" title="墨黑"></button>
+    </span>
+    <label>字号</label>
+    <input type="number" id="bodySize" min="8" max="16" step="0.5" placeholder="默认">
+    <label>分区</label>
+    <select id="sectionStyle">
+      <option value="">默认</option>
+      <option value="rule">下划线</option>
+      <option value="tracked">字距线</option>
+      <option value="bar">竖线</option>
+    </select>
+    <button id="btnThemeReset">重置主题</button>
+  </div>
+  <div class="group" style="margin-left:auto">
+    <button id="btnSample">载入示例</button>
+    <button id="btnHtml">下载 HTML</button>
+    <button id="btnPrint" class="primary">打印 / 存为 PDF</button>
+  </div>
+</div>
+
+<main>
+  <section class="pane">
+    <div class="hd">简历 JSON（支持 <b>**加粗**</b>）；kind: timeline / project / list / paragraph，未知 kind 按结构自动识别</div>
+    <textarea id="src" spellcheck="false" aria-label="简历 JSON"></textarea>
+  </section>
+  <section class="pane">
+    <div class="hd">实时预览</div>
+    <iframe id="preview" title="简历预览"></iframe>
+    <div id="report"></div>
+  </section>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================================
+// 以下为 lib/model.js · lib/templates.js · lib/lint.js · lib/render-html.js
+// 的浏览器打包产物（tools/build-playground.mjs 生成，请勿手改）
+// ============================================================================
+// ===== theme.js =====
+/**
+ * 主题 token：把「三套版式」从写死的成品，变成可调的起点。
+ *
+ * 用户诉求是「用 classic，但主色换深绿、正文大一号」这类微调，
+ * 而不是再要第四套版式。所以这里只开放能安全映射到 DOCX 与 HTML
+ * 同一套 token 的维度：颜色、正文字体、字号比例、行高、分区标题样式。
+ *
+ * 刻意不开放：页边距、分栏、绝对定位。前者已有 pageSize，后两者
+ * 在 DOCX 里无法与 HTML 保持同源，会直接破坏「Word 与 PDF 同源」这个前提。
+ */
+
+const COLOR_KEYS = ['accent', 'text', 'muted', 'band', 'rule', 'name']
+const SECTION_STYLES = ['rule', 'tracked', 'bar']
+
+const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n))
+
+/** `#abc` / `abc` / `#aabbcc` / `aabbcc` → `AABBCC`；非法值返回 null */
+function hexColor(value) {
+  if (typeof value !== 'string') return null
+  const raw = value.trim().replace(/^#/, '')
+  if (/^[0-9a-f]{3}$/i.test(raw)) {
+    return raw
+      .split('')
+      .map((c) => c + c)
+      .join('')
+      .toUpperCase()
+  }
+  if (/^[0-9a-f]{6}$/i.test(raw)) return raw.toUpperCase()
+  return null
+}
+
+/**
+ * 清洗用户给的主题，非法项直接丢掉而不是抛错
+ * （用户写错颜色不该让整份简历渲染失败）。
+ * @returns {object|null} 没有任何有效项时返回 null
+ */
+function normalizeTheme(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const out = {}
+
+  for (const key of COLOR_KEYS) {
+    const v = hexColor(raw[key])
+    if (v) out[key] = v
+  }
+
+  if (typeof raw.font === 'string' && raw.font.trim()) out.font = raw.font.trim().slice(0, 60)
+
+  const bodySize = Number(raw.bodySize)
+  if (Number.isFinite(bodySize) && bodySize > 0) out.bodySize = +clamp(bodySize, 8, 16).toFixed(2)
+
+  const lineHeight = Number(raw.lineHeight)
+  if (Number.isFinite(lineHeight) && lineHeight > 0) out.lineHeight = +clamp(lineHeight, 0.85, 1.6).toFixed(3)
+
+  if (SECTION_STYLES.includes(raw.sectionStyle)) out.sectionStyle = raw.sectionStyle
+
+  return Object.keys(out).length ? out : null
+}
+
+/**
+ * 把主题合进模板。返回新对象，不修改模板常量。
+ *
+ * 入参先过一遍 normalizeTheme：调用方可能直接给 `#RRGGBB` 或原始 UI 值，
+ * 而模板里存的是不带 `#` 的十六进制，混着用会渲染出 `##RRGGBB`。
+ *
+ * 字号缩放会带着行高一起等比放大，否则「大一号」会立刻把页数顶爆。
+ */
+function applyTheme(t, theme) {
+  const clean = normalizeTheme(theme)
+  if (!clean) return t
+
+  const merged = { ...t, color: { ...t.color }, size: { ...t.size }, section: { ...t.section }, font: { ...t.font } }
+
+  for (const key of COLOR_KEYS) {
+    if (clean[key]) merged.color[key] = clean[key]
+  }
+
+  if (clean.font) merged.font.body = clean.font
+
+  if (clean.bodySize) {
+    const ratio = clean.bodySize / t.size.body
+    for (const key of Object.keys(t.size)) {
+      merged.size[key] = +(t.size[key] * ratio).toFixed(2)
+    }
+    merged.line = +(t.line * ratio).toFixed(2)
+  }
+
+  if (clean.lineHeight) merged.line = +(merged.line * clean.lineHeight).toFixed(2)
+
+  if (clean.sectionStyle) merged.section.style = clean.sectionStyle
+
+  return merged
+}
+
+// ===== locale.js =====
+/**
+ * 本地化：把此前写死的中文文案集中到一处。
+ *
+ * 接入点：
+ *   - 骨架字段名与模块名（cli init / resume_init）
+ *   - 产物文件名后缀（api.renderResume）
+ *   - HTML <html lang> 与 <title>
+ *   - DOCX 页脚页码
+ */
+
+const LANGUAGES = ['zh', 'en']
+
+const LOCALE = {
+  zh: {
+    tag: 'zh-CN',
+    resumeSuffix: '简历',
+    titleSuffix: '简历',
+    pagePrefix: '第 ',
+    pageSuffix: ' 页',
+    colon: '：',
+    defaultIntent: '求职意向：后端开发工程师',
+    fields: [
+      ['电话', '13800000000'],
+      ['邮箱', 'name@example.com'],
+      ['工作年限', '3 年'],
+      ['学历', '本科'],
+    ],
+    sections: {
+      work: '工作经历',
+      project: '项目经历',
+      skills: '专业技能',
+    },
+    samples: {
+      role: '后端开发工程师',
+      company: '公司名称',
+      degree: '本科',
+      years: '3 年',
+      projectIntro: '**项目介绍：**面向 B 端的订单履约中台，支撑日均 200 万单。',
+      projectLabel: '职责与成果：',
+      workBullet: '主导 **订单中心** 重构，把接口 P99 从 800ms 降到 220ms，线上超时告警下降 **85%**',
+      skillBullet: '**后端**：熟悉 Java、Spring Boot，掌握 MySQL 索引优化与 Redis 缓存设计',
+      projectBullet: '**履约链路**：拆分超时任务，把平均履约时长压缩 30%',
+      dateNow: '2022.07 - 至今',
+      dateProject: '2023.03 - 2023.12',
+    },
+  },
+  en: {
+    tag: 'en',
+    resumeSuffix: 'Resume',
+    titleSuffix: 'Resume',
+    pagePrefix: 'Page ',
+    pageSuffix: '',
+    colon: ': ',
+    defaultIntent: 'Target role: Backend Engineer',
+    fields: [
+      ['Phone', '+1 555 000 0000'],
+      ['Email', 'name@example.com'],
+      ['Experience', '3 years'],
+      ['Education', "Bachelor's"],
+    ],
+    sections: {
+      work: 'Experience',
+      project: 'Projects',
+      skills: 'Skills',
+    },
+    samples: {
+      role: 'Backend Engineer',
+      company: 'Company Name',
+      degree: "Bachelor's",
+      years: '3 years',
+      projectIntro: '**Project:** A B2B order fulfilment platform handling 2M orders per day.',
+      projectLabel: 'Responsibilities & impact:',
+      workBullet:
+        'Led the **order service** rewrite, cutting p99 latency from 800ms to 220ms and timeout alerts by **85%**',
+      skillBullet:
+        '**Backend:** Java, Spring Boot; MySQL index tuning and Redis cache design',
+      projectBullet:
+        '**Fulfilment pipeline:** split the timeout jobs and cut average fulfilment time by 30%',
+      dateNow: '2022.07 - Present',
+      dateProject: '2023.03 - 2023.12',
+    },
+  },
+}
+
+/** 未知值一律回落 zh，保证任何输入都有可用文案 */
+function localeOf(lang) {
+  const key = String(lang ?? '').trim().toLowerCase()
+  return LOCALE[key] || LOCALE.zh
+}
+
+function normalizeLang(lang) {
+  const key = String(lang ?? '').trim().toLowerCase()
+  return LANGUAGES.includes(key) ? key : 'zh'
+}
+
+/** 产物文件名：<姓名>-简历 / <姓名>-Resume */
+function resumeFileName(name, lang) {
+  return `${name}-${localeOf(lang).resumeSuffix}`
+}
+
+// ===== model.js =====
+/**
+ * 简历数据模型：归一化、校验、富文本解析。
+ *
+ * 数据结构：
+ * {
+ *   "meta":    { "template": "classic", "maxPages": 3 },
+ *   "basics":  { "name", "intent", "fields": [[label, value], ...] },
+ *   "sections":[ {kind:"timeline"|"list"|"project", title, items|bullets} ]
+ * }
+ *
+ * 正文用 **双星号** 标记加粗；HTML 与 DOCX 都解析同一套标记。
+ */
+
+
+/**
+ * 四种模块形态：
+ *   timeline / project —— 带 head + date + bullets 的条目
+ *   list               —— 只有 bullets
+ *   paragraph          —— 整段文字（个人简介、自我评价这种，不该被渲染成 bullet）
+ *
+ * 不在这四种里的 kind 不再报错，改按内容形状推断（见 inferKind）。
+ * 用户可以给模块起任意名字（「发表文章」「获奖」「开源项目」），
+ * 只需要选对形状。
+ */
+const SECTION_KINDS = ['timeline', 'list', 'project', 'paragraph']
+
+/** 未知 kind 时按字段形状推断，而不是抛错 */
+function inferKind(section) {
+  if (Array.isArray(section.items) && section.items.length) return 'timeline'
+  if (typeof section.text === 'string' && section.text.trim()) return 'paragraph'
+  if (Array.isArray(section.bullets) && section.bullets.length) return 'list'
+  return 'list'
+}
+
+function parseRich(text) {
+  const out = []
+  const src = String(text ?? '')
+  let i = 0
+  while (i < src.length) {
+    const open = src.indexOf('**', i)
+    if (open === -1) {
+      if (i < src.length) out.push({ text: src.slice(i), bold: false })
+      break
+    }
+    if (open > i) out.push({ text: src.slice(i, open), bold: false })
+    const close = src.indexOf('**', open + 2)
+    if (close === -1) {
+      out.push({ text: src.slice(open), bold: false })
+      break
+    }
+    out.push({ text: src.slice(open + 2, close), bold: true })
+    i = close + 2
+  }
+  return out.filter((r) => r.text.length > 0)
+}
+
+function normalize(data) {
+  if (!data || typeof data !== 'object') throw new Error('简历数据必须是一个 JSON 对象')
+  const basics = data.basics || {}
+  if (!basics.name) throw new Error('缺少 basics.name（姓名）')
+
+  const fields = Array.isArray(basics.fields)
+    ? basics.fields
+        .filter((f) => Array.isArray(f) && f.length >= 2 && f[0] && f[1] != null && String(f[1]).trim())
+        .map((f) => [String(f[0]), String(f[1])])
+    : []
+
+  const sections = (data.sections || []).map((s, idx) => {
+    const declared = s.kind ? String(s.kind) : 'list'
+    const kind = SECTION_KINDS.includes(declared) ? declared : inferKind(s)
+    if (!s.title) throw new Error(`sections[${idx}] 缺少 title`)
+
+    const sec = { kind, title: String(s.title) }
+    // 记下原始 kind，供 lint 提示「已按 xxx 渲染」。
+    // 数据可能被 normalize 两次（loadData → checkResume），这里要能继承上次的结论，
+    // 否则第二次会看到已归一化的 kind，把提示丢掉。
+    if (declared !== kind) sec.declaredKind = declared
+    else if (s.declaredKind) sec.declaredKind = String(s.declaredKind)
+
+    if (kind === 'paragraph') {
+      const text = String(s.text ?? (Array.isArray(s.bullets) ? s.bullets.join('\n\n') : '')).trim()
+      if (!text) throw new Error(`sections[${idx}]「${sec.title}」是 paragraph，但没有 text`)
+      sec.text = text
+    } else if (kind === 'list') {
+      sec.bullets = (s.bullets || []).map(String)
+    } else {
+      sec.items = (s.items || []).map((it) => ({
+        head: String(it.head || ''),
+        sub: it.sub ? String(it.sub) : '',
+        date: it.date ? String(it.date) : '',
+        intro: it.intro ? String(it.intro) : '',
+        label: it.label ? String(it.label) : '',
+        bullets: (it.bullets || []).map(String),
+      }))
+    }
+    return sec
+  })
+
+  if (!sections.length) throw new Error('sections 不能为空')
+
+  return {
+    meta: {
+      template: data.meta?.template || 'classic',
+      maxPages: Number(data.meta?.maxPages) || 0,
+      lang: normalizeLang(data.meta?.lang),
+      pageSize: data.meta?.pageSize ? String(data.meta.pageSize) : '',
+      font: data.meta?.font ? String(data.meta.font) : '',
+      theme: normalizeTheme(data.meta?.theme),
+      allowQualitative: Boolean(data.meta?.allowQualitative),
+    },
+    basics: {
+      name: String(basics.name),
+      intent: basics.intent ? String(basics.intent) : '',
+      fields,
+    },
+    sections,
+  }
+}
+
+/** 统计用：所有可见文字 */
+function plainText(data) {
+  const parts = [data.basics.name, data.basics.intent, ...data.basics.fields.flat()]
+  for (const s of data.sections) {
+    parts.push(s.title)
+    if (s.kind === 'paragraph') parts.push(s.text)
+    else if (s.kind === 'list') parts.push(...s.bullets)
+    else for (const it of s.items) parts.push(it.head, it.sub, it.date, it.intro, it.label, ...it.bullets)
+  }
+  return parts.filter(Boolean).join('\n')
+}
+
+// ===== templates.js =====
+/**
+ * 三套版式 + 共用的排版标尺（单位：pt / mm）。
+ * 设计目标：同一份数据结构，HTML 与 DOCX 用同一组“设计 token”渲染，保证观感一致。
+ *
+ * 页面尺寸默认 A4，可通过 meta.pageSize: "A4" | "Letter" 覆盖；
+ * 字体默认走一条跨平台回退链，可通过 meta.font 覆盖正文字体；
+ * 颜色/字号/行高/分区样式可通过 meta.theme 在预设上做微调。
+ */
+
+const PAGE_SIZES = {
+  A4: { label: 'A4', width: 210, height: 297 },
+  Letter: { label: 'Letter', width: 215.9, height: 279.4 },
+}
+
+/** 跨平台中文回退链：Windows / macOS / Linux 各命中一个，最后兜 sans-serif */
+const FONT_FALLBACK = [
+  'PingFang SC',
+  'Hiragino Sans GB',
+  'Noto Sans CJK SC',
+  'Source Han Sans SC',
+  'WenQuanYi Micro Hei',
+]
+
+const TEMPLATES = {
+  classic: {
+    id: 'classic',
+    name: '经典蓝线',
+    desc: '深蓝分区线 + 单栏推进，稳重清晰，适合银行/国企/交付管理岗',
+    page: { size: 'A4', width: 210, height: 297, top: 12, bottom: 12, left: 14, right: 14 },
+    font: { body: 'Microsoft YaHei', latin: 'Segoe UI', fallback: FONT_FALLBACK },
+    size: { body: 10.5, name: 22.5, intent: 11.25, section: 12.75, small: 9.5 },
+    line: 14.8,
+    color: { text: '1F2329', muted: '4E5969', accent: '1A5FB4', rule: 'B9C9DD', name: '111111', band: 'F4F7FB' },
+    header: { layout: 'stack', infoColumns: 2, gap: 40, nameTracking: 1.5 },
+    section: { style: 'rule', ruleSize: 9, spaceBefore: 8.25, spaceAfter: 3 },
+    entry: { spaceBefore: 5.25, roleGap: '　' },
+    bullet: { left: 14, hanging: 9, spaceBefore: 0 },
+    rules: { pageNumbers: false },
+  },
+
+  minimal: {
+    id: 'minimal',
+    name: '极简黑白',
+    desc: '无彩色、细横线、字距标题，克制专业，适合外企/学术/咨询',
+    page: { size: 'A4', width: 210, height: 297, top: 14, bottom: 14, left: 16, right: 16 },
+    font: { body: 'Microsoft YaHei', latin: 'Segoe UI', fallback: FONT_FALLBACK },
+    size: { body: 10.5, name: 20, intent: 10.5, section: 10, small: 9.5 },
+    line: 15.2,
+    color: { text: '111111', muted: '555555', accent: '111111', rule: 'D0D0D0', name: '000000', band: 'FAFAFA' },
+    header: { layout: 'stack', infoColumns: 3, gap: 24, nameTracking: 6 },
+    section: { style: 'tracked', ruleSize: 4, spaceBefore: 10.5, spaceAfter: 3.75 },
+    entry: { spaceBefore: 6, roleGap: ' · ' },
+    bullet: { left: 13, hanging: 8, spaceBefore: 0 },
+    rules: { pageNumbers: false },
+  },
+
+  sidebar: {
+    id: 'sidebar',
+    name: '侧栏信息带',
+    desc: '首屏浅灰信息带（左姓名右联系）+ 左侧竖线分区，现代感强，适合互联网/产品/技术',
+    page: { size: 'A4', width: 210, height: 297, top: 10, bottom: 12, left: 13, right: 13 },
+    font: { body: 'Microsoft YaHei', latin: 'Segoe UI', fallback: FONT_FALLBACK },
+    size: { body: 10.5, name: 20, intent: 10.5, section: 11.5, small: 9 },
+    line: 14.6,
+    color: { text: '1F2329', muted: '4E5969', accent: '0F766E', rule: 'CBD5D3', name: '0B1F1C', band: 'F1F5F4' },
+    header: { layout: 'band', infoColumns: 3, gap: 14, nameTracking: 2 },
+    section: { style: 'bar', ruleSize: 12, spaceBefore: 8, spaceAfter: 2.5 },
+    entry: { spaceBefore: 5, roleGap: '　' },
+    bullet: { left: 13.5, hanging: 8.5, spaceBefore: 0 },
+    rules: { pageNumbers: true },
+  },
+}
+
+const TEMPLATE_IDS = Object.keys(TEMPLATES)
+
+/** 页面尺寸名 → 尺寸；未知值回落 A4 */
+function pageSizeOf(name) {
+  const key = String(name ?? '').trim()
+  return PAGE_SIZES[key] || PAGE_SIZES.A4
+}
+
+/**
+ * @param {string} id 版式 id
+ * @param {object} [override] 来自 meta 的覆盖项：{ pageSize, font, theme }
+ */
+function getTemplate(id, override = {}) {
+  const base = TEMPLATES[id || 'classic']
+  if (!base) throw new Error(`未知版式 "${id}"，可选：${TEMPLATE_IDS.join(' / ')}`)
+
+  const size = override.pageSize ? pageSizeOf(override.pageSize) : null
+  const font = override.font ? String(override.font).trim() : ''
+
+  if (!size && !font && !override.theme) return base
+
+  const merged = { ...base, page: { ...base.page }, font: { ...base.font } }
+  if (size) {
+    merged.page.size = size.label
+    merged.page.width = size.width
+    merged.page.height = size.height
+  }
+  if (font) merged.font.body = font
+
+  // 主题在最后合并，优先级最高（它就是冲着「在预设上做微调」来的）
+  return applyTheme(merged, override.theme)
+}
+
+const PT_PER_MM = 72 / 25.4
+const TWIP_PER_PT = 20
+
+function pageWidthMm(t) {
+  return t.page.width ?? PAGE_SIZES.A4.width
+}
+
+function pageHeightMm(t) {
+  return t.page.height ?? PAGE_SIZES.A4.height
+}
+
+function textWidthPt(t) {
+  return (pageWidthMm(t) - t.page.left - t.page.right) * PT_PER_MM
+}
+
+/** HTML 用的字体栈：正文字体 → 拉丁字体 → 跨平台回退 → sans-serif */
+function fontStack(t) {
+  const list = [t.font.body, t.font.latin, ...(t.font.fallback || []), 'sans-serif']
+  const seen = new Set()
+  return list
+    .filter((f) => f && !seen.has(f) && seen.add(f))
+    .map((f) => (f === 'sans-serif' ? f : `"${f}"`))
+    .join(', ')
+}
+
+// ===== lint.js =====
+/** 我定的简历写作规则，逐条可执行。 */
+const RULES = {
+  structure: '4–6 个模块；亮点前置；一页优先，超出需给出压页理由',
+  star: '每条 bullet 写清 场景→动作→结果，结果必须可验证',
+  numbers: '声称了变化（提升/降低/优化/缩短）就必须有数字；纯功能描述与技能清单不强制',
+  verbs: '用“主导/搭建/重构/推动/落地”开头，避免“负责/参与/协助”',
+  bold: '只加粗名词短语：技术栈、机制、关键产出；不整句加粗，单条不超过 3 处',
+  density: '一条 bullet 不超过 2 行（≈110 字），超过就拆或删',
+  tense: '在职用现在时描述职责，离职用完成时描述结果',
+}
+
+const WEAK_VERBS = ['负责', '参与', '协助', '帮助', '配合', '从事']
+/** 英文简历里同样属于「弱开头」的表述 */
+const WEAK_OPENERS_EN = /^(responsible for|participated in|assisted|helped|involved in|worked on)\b/i
+
+/** 声称了「变化」的动词：这类句子必须有数字支撑，否则结果不可验证 */
+const CLAIM_VERBS =
+  /(提升|提高|降低|下降|缩短|减少|增长|节省|加快|优化|压缩|翻倍|降到|降至|\b(?:increased?|decreased?|reduced?|improved?|cut|boosted?|lowered?|raised?|accelerated?|optimized?|saved?|shortened?|grew|doubled?)\b)/i
+/** 清单式模块（技能/证书等）不该强制出现数字 */
+const NON_NUMERIC_TITLES = /(技能|专长|技术栈|工具|证书|荣誉|奖项|skills?|expertise|technolog|tools?|certificat|awards?)/i
+const DATE_RE =
+  /^\d{4}([.\-/]\d{1,2})?\s*[-–—~至]\s*(\d{4}([.\-/]\d{1,2})?|至今|今|present|current|now)$/i
+
+function eachBullet(data, fn) {
+  for (const s of data.sections) {
+    if (s.kind === 'paragraph') continue
+    if (s.kind === 'list') s.bullets.forEach((b, i) => fn(b, `${s.title}[${i + 1}]`, s))
+    else
+      for (const it of s.items || [])
+        it.bullets.forEach((b, i) => fn(b, `${s.title} · ${it.head}[${i + 1}]`, s))
+  }
+}
+
+const CJK_RE = /[\u2e80-\u9fff\uf900-\ufaff\uff00-\uffef\u3000-\u303f]/
+
+/** 估算排版宽度：全角字记 1，半角记 0.55 */
+function visualWidth(text) {
+  let w = 0
+  for (const ch of String(text ?? '')) w += CJK_RE.test(ch) ? 1 : 0.55
+  return w
+}
+
+/** 按「一行约放多少个全角字」估算占用行数 */
+function estimateLines(text, charsPerLine = 49) {
+  const per = Number(charsPerLine) > 0 ? Number(charsPerLine) : 49
+  return Math.max(1, Math.ceil(visualWidth(text) / per))
+}
+
+/**
+ * 给每个模块、每个条目估算占用行数，用来回答「该压哪一块」。
+ * 只是按字符宽度折算的估算，不替代真实排版，但足够排出优先级。
+ */
+function estimateWeights(data, charsPerLine = 49) {
+  const sections = []
+  for (const s of data.sections) {
+    let lines = 1 // 分区标题
+    let introLines = 0
+    let introCount = 0
+    const items = []
+    if (s.kind === 'paragraph') {
+      const n = estimateLines(s.text, charsPerLine)
+      lines += n
+      items.push({ label: s.title, lines: n })
+    } else if (s.kind === 'list') {
+      for (const b of s.bullets) {
+        const n = estimateLines(b, charsPerLine)
+        lines += n
+        items.push({ label: s.title, lines: n })
+      }
+    } else {
+      for (const it of s.items || []) {
+        let n = 1 // 条目标题行
+        if (it.intro) {
+          const k = estimateLines(it.intro, charsPerLine)
+          n += k
+          introLines += k
+          introCount += 1
+        }
+        if (it.label) n += 1
+        for (const b of it.bullets) n += estimateLines(b, charsPerLine)
+        lines += n
+        items.push({ label: it.head ? `${s.title} · ${it.head}` : s.title, lines: n })
+      }
+    }
+    sections.push({ title: s.title, lines, introLines, introCount, items })
+  }
+  return sections
+}
+
+/**
+ * 超页时给出「该压哪一块」的具体建议。
+ * compression 由渲染端传入 { attempts, lineSpacing, linesPerPage, charsPerLine }；
+ * 缺省时只按字符宽度估算，仍能排出优先级。
+ */
+function pageHints(data, { pages = 0, maxPages = 0, compression = {} } = {}) {
+  const c = compression || {}
+  const charsPerLine = Number(c.charsPerLine) || 49
+  const sections = estimateWeights(data, charsPerLine)
+  const totalLines = sections.reduce((n, s) => n + s.lines, 0) || 1
+  const over = Math.max(0, pages - maxPages)
+  const hints = []
+
+  if (c.attempts > 1 && c.lineSpacing) {
+    hints.push(`行距已自动收紧到 ${c.lineSpacing}pt（试了 ${c.attempts} 轮），靠行距压不回去了，得动内容`)
+  }
+  if (c.linesPerPage && over) {
+    hints.push(`当前行距下一页约 ${c.linesPerPage} 行；要降 ${over} 页，至少得减掉约 ${c.linesPerPage * over} 行`)
+  }
+
+  const top = [...sections].sort((a, b) => b.lines - a.lines)[0]
+  if (top) {
+    hints.push(
+      `篇幅最大的是「${top.title}」，约 ${top.lines} 行、占 ${Math.round((top.lines / totalLines) * 100)}%，优先压它`,
+    )
+  }
+
+  const blocks = sections
+    .flatMap((s) => s.items)
+    .sort((a, b) => b.lines - a.lines)
+    .slice(0, 3)
+  if (blocks.length) {
+    hints.push('最占篇幅的三块：' + blocks.map((b) => `${b.label}（约 ${b.lines} 行）`).join('、'))
+  }
+
+  const introLines = sections.reduce((n, s) => n + s.introLines, 0)
+  const introCount = sections.reduce((n, s) => n + s.introCount, 0)
+  if (introLines > introCount) {
+    hints.push(`项目介绍合计约 ${introLines} 行，每段压到 1 行可省约 ${introLines - introCount} 行`)
+  }
+
+  hints.push('处理顺序：删形容词 → 把最旧的经历压成一行 → 合并模块 → 删经历前必须征得本人同意')
+  return hints
+}
+
+function lint(data, { pages = null, maxPages = 0, compression = null } = {}) {
+  const issues = []
+  const add = (level, rule, message, where = '') => issues.push({ level, rule, message, where })
+
+  if (!data.basics.intent) add('warn', 'intent', '缺少求职意向，HR 无法一眼判断匹配度')
+  if (data.basics.fields.length < 4) add('warn', 'contact', '联系方式字段少于 4 个（建议：电话/邮箱/年限/学历）')
+  const fields = data.basics.fields
+  // 标签名（中/英）与「值本身长得像」两条路都认，英文简历才不会被误报缺联系方式
+  const hasPhone = fields.some(
+    ([k, v]) => /电话|手机|手机号|phone|mobile|tel\b/i.test(k) || /^[+\d][\d\s()\-]{6,}$/.test(String(v).trim()),
+  )
+  const hasMail = fields.some(
+    ([k, v]) => /邮箱|邮件|e-?mail/i.test(k) || /@[\w.-]+\.\w+/.test(String(v)),
+  )
+  if (!hasPhone) add('error', 'contact', '缺少电话')
+  if (!hasMail) add('error', 'contact', '缺少邮箱')
+
+  if (data.sections.length < 3) add('warn', 'structure', `只有 ${data.sections.length} 个模块，建议 4–6 个`)
+  if (data.sections.length > 6) add('warn', 'structure', `有 ${data.sections.length} 个模块，超过 6 个会稀释重点`)
+
+  const allowQualitative = Boolean(data.meta?.allowQualitative)
+  let totalChars = 0
+  let boldChars = 0
+  let bullets = 0
+  let withNumber = 0
+  let claims = 0
+  let claimsWithNumber = 0
+
+  eachBullet(data, (text, where, section) => {
+    bullets += 1
+    const plain = text.replace(/\*\*/g, '')
+    totalChars += plain.length
+    boldChars += parseRich(text)
+      .filter((r) => r.bold)
+      .reduce((n, r) => n + r.text.length, 0)
+
+    const hasNumber = /\d/.test(plain)
+    const isClaim = CLAIM_VERBS.test(plain)
+    const listLike = section.kind === 'list' && NON_NUMERIC_TITLES.test(section.title)
+
+    if (hasNumber) withNumber += 1
+    if (isClaim && !listLike) {
+      claims += 1
+      if (hasNumber) claimsWithNumber += 1
+      else if (allowQualitative)
+        add('info', 'numbers', '声称了变化但没给数字；写定性描述可以接受，能补百分比或时长最优', where)
+      else add('warn', 'numbers', '声称了变化但没给数字，结果无法验证', where)
+    }
+    // 纯功能描述与技能清单不逐条告警，避免把真问题淹掉
+
+    const head = plain.trim().slice(0, 2)
+    if (WEAK_VERBS.some((v) => plain.trim().startsWith(v)) || WEAK_OPENERS_EN.test(plain.trim()))
+      add('info', 'verbs', `以“${head}”开头，可换成动作更强的动词（主导/搭建/推动）`, where)
+
+    if (plain.length > 110) add('warn', 'density', `长 ${plain.length} 字，超过两行，建议拆分或压缩`, where)
+    if (/[，、；]$/.test(plain.trim())) add('info', 'punct', '结尾多余标点', where)
+  })
+
+  if (claims >= 2 && claimsWithNumber / claims < 0.5)
+    add(
+      'warn',
+      'numbers',
+      `${claims} 条声称了变化（提升/降低/优化等），只有 ${claimsWithNumber} 条给了数字，整体结果不可验证`,
+    )
+
+  // 段落型模块（个人简介这种）没有 bullet，但它的加粗同样该计入占比
+  let proseChars = 0
+  let proseBoldChars = 0
+
+  for (const s of data.sections) {
+    if (s.kind === 'paragraph') {
+      const plain = s.text.replace(/\*\*/g, '')
+      proseChars += plain.length
+      proseBoldChars += parseRich(s.text)
+        .filter((r) => r.bold)
+        .reduce((n, r) => n + r.text.length, 0)
+      if (plain.length > 240) add('warn', 'density', `段落长 ${plain.length} 字，简介类建议 3 行以内`, s.title)
+    }
+
+    // 用户写了未知 kind 时，normalize 已按形状推断；这里明确告诉它被当成了什么
+    if (s.declaredKind) {
+      const how = { timeline: '条目式', project: '条目式', list: '列表', paragraph: '段落' }[s.kind] || s.kind
+      add('info', 'kind', `未知模块类型「${s.declaredKind}」，已按${how}渲染`, s.title)
+    }
+
+    if (s.kind === 'timeline' || s.kind === 'project') {
+      for (const it of s.items || []) {
+        if (it.date && !DATE_RE.test(it.date.trim()))
+          add('info', 'date', `时间格式不统一：「${it.date}」，建议 2023.05 - 2025.05 或 2023 - 2025`, s.title)
+        if (!it.bullets.length && !/教育|education|academic/i.test(s.title))
+          add('warn', 'empty', `「${it.head}」没有写内容`, s.title)
+      }
+    }
+  }
+
+  // 段落里的加粗也进分母，否则「简介整段加粗」会躲过 bold 检查
+  const grandChars = totalChars + proseChars
+  const grandBold = boldChars + proseBoldChars
+  if (grandChars && grandBold / grandChars > 0.25)
+    add('warn', 'bold', `加粗占比 ${((grandBold / grandChars) * 100).toFixed(0)}%，超过 25%，重点会失效`)
+
+  if (pages != null && maxPages) {
+    if (pages > maxPages) {
+      issues.push({
+        level: 'error',
+        rule: 'pages',
+        message: `实际 ${pages} 页，目标 ${maxPages} 页，超出 ${pages - maxPages} 页`,
+        where: '',
+        hints: pageHints(data, { pages, maxPages, compression }),
+      })
+    } else if (pages < maxPages - 1) {
+      add('info', 'pages', `只有 ${pages} 页，目标 ${maxPages} 页，可以补充内容`)
+    }
+  }
+
+  const stats = {
+    bullets,
+    chars: totalChars,
+    boldRatio: totalChars ? +(boldChars / totalChars).toFixed(3) : 0,
+    numberedRatio: bullets ? +(withNumber / bullets).toFixed(2) : 0,
+    claims,
+    claimRatio: claims ? +(claimsWithNumber / claims).toFixed(2) : 0,
+    sections: data.sections.length,
+    pages,
+  }
+  return { issues, stats }
+}
+
+function lintText(data) {
+  return plainText(data).length
+}
+
+// ===== render-html.js =====
+const esc = (s) =>
+  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+
+function rich(text, cls = '') {
+  const inner = parseRich(text)
+    .map((r) => (r.bold ? `<strong>${esc(r.text)}</strong>` : esc(r.text)))
+    .join('')
+  return `<span class="${cls}">${inner}</span>`
+}
+
+function cssVars(t) {
+  const pt = (v) => `${v}pt`
+  return `
+  --body: ${pt(t.size.body)};
+  --name: ${pt(t.size.name)};
+  --intent: ${pt(t.size.intent)};
+  --section: ${pt(t.size.section)};
+  --small: ${pt(t.size.small)};
+  --line: ${pt(t.line)};
+  --text: #${t.color.text};
+  --muted: #${t.color.muted};
+  --accent: #${t.color.accent};
+  --rule: #${t.color.rule};
+  --name-color: #${t.color.name};
+  --band: #${t.color.band};
+  --pad-t: ${t.page.top}mm; --pad-b: ${t.page.bottom}mm;
+  --pad-l: ${t.page.left}mm; --pad-r: ${t.page.right}mm;
+  --font: ${fontStack(t)};`
+}
+
+function header(t, basics, lang) {
+  const infoCols = t.header.infoColumns
+  const cols = Math.max(1, infoCols)
+  const rows = []
+  for (let i = 0; i < basics.fields.length; i += cols) rows.push(basics.fields.slice(i, i + cols))
+  const info = `<div class="info" style="grid-template-columns:repeat(${cols}, minmax(0,1fr))">
+    ${rows
+      .flat()
+      .map(([k, v]) => `<div class="field"><span class="k">${esc(k)}${esc(lang.colon)}</span>${esc(v)}</div>`)
+      .join('')}
+  </div>`
+
+  if (t.header.layout === 'band') {
+    return `<header class="band">
+      <div class="name">${esc(basics.name)}</div>
+      ${basics.intent ? `<div class="intent">${esc(basics.intent)}</div>` : ''}
+      ${info}
+    </header>`
+  }
+
+  return `<header class="stack">
+    <div class="name">${esc(basics.name)}</div>
+    ${basics.intent ? `<div class="intent">${esc(basics.intent)}</div>` : ''}
+    ${info}
+  </header>`
+}
+
+function section(t, s) {
+  const title = `<div class="sec-title ${t.section.style}"><span>${esc(s.title)}</span></div>`
+  if (s.kind === 'paragraph') {
+    // 个人简介这类整段文字：拆成若干 <p>，不加圆点
+    const paras = s.text
+      .split(/\n{2,}/)
+      .map((p) => `<p class="prose">${rich(p.trim())}</p>`)
+      .join('')
+    return `${title}${paras}`
+  }
+  if (s.kind === 'list') {
+    return `${title}<ul class="list">${s.bullets.map((b) => `<li>${rich(b)}</li>`).join('')}</ul>`
+  }
+  const items = s.items
+    .map((it) => {
+      const head = `<div class="entry-head">
+        <div class="entry-left"><span class="org">${esc(it.head)}</span>${
+          it.sub ? `<span class="role">${t.entry.roleGap === ' · ' ? ' · ' : '　'}${esc(it.sub)}</span>` : ''
+        }</div>
+        ${it.date ? `<div class="date">${esc(it.date)}</div>` : ''}
+      </div>`
+      const intro = it.intro ? `<div class="intro">${rich(it.intro)}</div>` : ''
+      const label = it.label ? `<div class="label">${esc(it.label)}</div>` : ''
+      const bullets = it.bullets.length
+        ? `<ul class="list">${it.bullets.map((b) => `<li>${rich(b)}</li>`).join('')}</ul>`
+        : ''
+      return `<div class="item">${head}${intro}${label}${bullets}</div>`
+    })
+    .join('')
+  return `${title}${items}`
+}
+
+function renderHTML(data, t) {
+  const pageW = pageWidthMm(t)
+  const pageH = pageHeightMm(t)
+  const pageSize = t.page.size || (pageW > 211 ? 'Letter' : 'A4')
+  const lang = localeOf(data.meta?.lang)
+  const body = data.sections.map((s) => section(t, s)).join('\n')
+
+  return `<!DOCTYPE html>
+<html lang="${esc(lang.tag)}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(data.basics.name)} - ${esc(lang.titleSuffix)}</title>
+<style>
+  :root {${cssVars(t)}
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { background: #e9ebee; }
+  body { font-family: var(--font); color: var(--text); font-size: var(--body); line-height: calc(var(--line) / var(--body)); }
+  .sheet {
+    width: ${pageW}mm; min-height: ${pageH}mm; margin: 24px auto; background: #fff;
+    padding: var(--pad-t) var(--pad-r) var(--pad-b) var(--pad-l);
+    box-shadow: 0 2px 18px rgba(0,0,0,.12);
+  }
+  strong { font-weight: 700; }
+
+  .name { font-size: var(--name); font-weight: 700; color: var(--name-color); letter-spacing: ${t.header.nameTracking}pt; line-height: 1.2; }
+  .intent { font-size: var(--intent); font-weight: 700; color: var(--accent); margin-top: 2.5pt; }
+  .info { display: grid; column-gap: ${t.header.gap}pt; row-gap: 1.5pt; margin-top: 5pt; }
+  .field { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .field .k { color: var(--muted); }
+
+  header.band {
+    background: var(--band); padding: 9pt 11pt; margin: 0 0 4pt;
+    border-left: 3pt solid var(--accent);
+  }
+  header.band .info { margin-top: 4pt; }
+
+  .sec-title { font-size: var(--section); font-weight: 700; color: var(--accent); margin: ${t.section.spaceBefore}pt 0 ${t.section.spaceAfter}pt; page-break-after: avoid; }
+  .sec-title.rule { border-bottom: ${(t.section.ruleSize / 8).toFixed(2)}pt solid var(--rule); padding-bottom: 2pt; }
+  .sec-title.tracked { letter-spacing: 1.2pt; border-bottom: ${(t.section.ruleSize / 8).toFixed(2)}pt solid var(--rule); padding-bottom: 2.5pt; }
+  .sec-title.bar { border-left: 3pt solid var(--accent); padding-left: 6pt; }
+
+  .item { page-break-inside: auto; }
+  .entry-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8pt; margin-top: ${t.entry.spaceBefore}pt; page-break-after: avoid; }
+  .entry-left { min-width: 0; }
+  .org { font-weight: 700; }
+  .role { font-weight: 400; margin-left: ${t.entry.roleGap === ' · ' ? 2 : 6}pt; color: var(--text); }
+  .date { white-space: nowrap; color: var(--text); }
+  .intro { margin-top: 1.5pt; }
+  .label { font-weight: 700; margin-top: 2.5pt; }
+
+  ul.list { list-style: none; margin-top: 1pt; }
+  ul.list li { position: relative; padding-left: ${t.bullet.left}pt; margin-bottom: ${t.bullet.spaceBefore}pt; }
+  ul.list li::before { content: "•"; position: absolute; left: ${t.bullet.left - t.bullet.hanging}pt; font-weight: 700; color: var(--accent); }
+
+  p.prose { margin-top: 1.5pt; text-align: justify; }
+  p.prose + p.prose { margin-top: ${t.bullet.spaceBefore + 2}pt; }
+
+  @media print {
+    html, body { background: #fff; }
+    .sheet { width: auto; min-height: 0; margin: 0; box-shadow: none; padding: 0; }
+    @page { size: ${pageSize}; margin: ${t.page.top}mm ${t.page.right}mm ${t.page.bottom}mm ${t.page.left}mm; }
+  }
+  @media (max-width: ${pageW + 40}mm) {
+    .sheet { width: auto; margin: 0; box-shadow: none; min-height: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="sheet">
+${header(t, data.basics, lang)}
+${body}
+</div>
+</body>
+</html>`
+}
+
+function htmlInfo(t) {
+  return { textWidthPt: textWidthPt(t), ptPerMm: PT_PER_MM, pageSize: t.page.size }
+}
+// ============================================================================
+// 页面逻辑
+// ============================================================================
+(function () {
+  var SAMPLE = "{\n  \"meta\": {\n    \"template\": \"classic\",\n    \"maxPages\": 2,\n    \"lang\": \"zh\"\n  },\n  \"basics\": {\n    \"name\": \"张明\",\n    \"intent\": \"求职意向：后端开发工程师\",\n    \"fields\": [\n      [\"电话\", \"138****4210\"],\n      [\"邮箱\", \"zhangming@example.com\"],\n      [\"工作年限\", \"6 年\"],\n      [\"学历\", \"本科\"]\n    ]\n  },\n  \"sections\": [\n    {\n      \"kind\": \"paragraph\",\n      \"title\": \"个人简介\",\n      \"text\": \"十年后端与交付经验，主导过三次核心系统重构。擅长把跨团队的技术分歧收敛成可执行方案，近三年带 **6 人小组**，交付准点率 **100%**。\"\n    },\n    {\n      \"kind\": \"timeline\",\n      \"title\": \"工作经历\",\n      \"items\": [\n        {\n          \"head\": \"某互联网科技有限公司\",\n          \"sub\": \"高级后端开发工程师\",\n          \"date\": \"2021.07 - 至今\",\n          \"bullets\": [\n            \"主导 **订单中心** 服务重构，拆分单体为 6 个领域服务，接口 P99 从 800ms 降到 **220ms**，线上超时告警下降 85%\",\n            \"搭建 **全链路压测体系**，覆盖 12 个核心场景，大促前提前暴露 3 个容量瓶颈，峰值承载提升 3 倍\",\n            \"推动 **灰度发布流程** 落地，发布回滚耗时从 40 分钟压缩到 3 分钟，季度故障数下降 60%\"\n          ]\n        },\n        {\n          \"head\": \"某金融信息服务公司\",\n          \"sub\": \"后端开发工程师\",\n          \"date\": \"2019.03 - 2021.06\",\n          \"bullets\": [\n            \"搭建 **对账系统**，日处理流水 200 万笔，账务差错率控制在万分之零点三以内\",\n            \"引入 **Redis 多级缓存**，热点查询 QPS 从 800 提升到 12000，数据库负载下降 70%\"\n          ]\n        }\n      ]\n    },\n    {\n      \"kind\": \"project\",\n      \"title\": \"项目经历\",\n      \"items\": [\n        {\n          \"head\": \"订单履约中台\",\n          \"sub\": \"核心开发 / 技术负责人\",\n          \"date\": \"2023.03 - 2024.02\",\n          \"intro\": \"面向 B 端的订单履约中台，支撑日均 200 万单、峰值 8000 TPS。\",\n          \"label\": \"职责与成果：\",\n          \"bullets\": [\n            \"**架构设计**：采用事件驱动加最终一致方案，履约链路从 9 个同步调用收敛为 3 个异步阶段\",\n            \"**稳定性**：设计幂等与补偿机制，重复消费导致的资损问题归零\",\n            \"**性能**：通过批量合并与本地缓存，单机吞吐提升 2.4 倍，服务器成本下降 35%\"\n          ]\n        }\n      ]\n    },\n    {\n      \"kind\": \"list\",\n      \"title\": \"专业技能\",\n      \"bullets\": [\n        \"**后端**：精通 Java、Spring Boot、Spring Cloud，熟悉 DDD 与微服务治理\",\n        \"**数据**：熟练 MySQL 索引优化与分库分表，熟悉 Redis、Kafka、Elasticsearch\",\n        \"**工程**：熟悉 Kubernetes、Docker、Jenkins，具备 CI/CD 流水线搭建经验\"\n      ]\n    },\n    {\n      \"kind\": \"list\",\n      \"title\": \"教育背景\",\n      \"bullets\": [\"某大学 · 计算机科学与技术 · 本科 · 2015.09 - 2019.06\"]\n    }\n  ]\n}\n";
+
+  var src = document.getElementById('src');
+  var preview = document.getElementById('preview');
+  var report = document.getElementById('report');
+  var maxPagesEl = document.getElementById('maxPages');
+  var pageSizeEl = document.getElementById('pageSize');
+  var bodySizeEl = document.getElementById('bodySize');
+  var sectionStyleEl = document.getElementById('sectionStyle');
+  var swatchesEl = document.getElementById('swatches');
+  var toastEl = document.getElementById('toast');
+  var currentTpl = 'classic';
+  var currentAccent = '';
+  var lastHtml = '';
+  var timer = null;
+
+  function theme() {
+    var t = {};
+    if (currentAccent) t.accent = currentAccent;
+    var bs = parseFloat(bodySizeEl.value);
+    if (bs > 0) t.bodySize = bs;
+    if (sectionStyleEl.value) t.sectionStyle = sectionStyleEl.value;
+    return Object.keys(t).length ? t : null;
+  }
+
+  function toast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    setTimeout(function () { toastEl.classList.remove('show'); }, 1600);
+  }
+
+  function parse() {
+    var raw = src.value.trim();
+    if (!raw) throw new Error('JSON 为空');
+    var obj = JSON.parse(raw);
+    obj.meta = obj.meta || {};
+    obj.meta.template = currentTpl;
+    obj.meta.pageSize = pageSizeEl.value;
+    var mp = parseInt(maxPagesEl.value, 10);
+    if (mp > 0) obj.meta.maxPages = mp;
+    return normalize(obj);
+  }
+
+  function esc2(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function renderReport(stats, issues) {
+    var out = [];
+    out.push('<div class="sum">');
+    out.push('<span>字数 <b>' + stats.chars + '</b></span>');
+    out.push('<span>加粗占比 <b>' + Math.round(stats.boldRatio * 100) + '%</b></span>');
+    out.push('<span>数字覆盖 <b>' + Math.round(stats.numberedRatio * 100) + '%</b></span>');
+    out.push('<span>模块 <b>' + stats.sections + '</b></span>');
+    out.push('</div>');
+
+    if (!issues.length) {
+      out.push('<div class="empty">检查通过，无提示项</div>');
+    } else {
+      out.push('<ul>');
+      issues.forEach(function (i) {
+        out.push(
+          '<li><span class="lv ' + i.level + '">' + i.level + '</span>' +
+          '<span class="where">' + esc2(i.where || i.rule) + '</span>' +
+          '<span>' + esc2(i.message) + '</span></li>'
+        );
+      });
+      out.push('</ul>');
+    }
+    report.innerHTML = out.join('');
+  }
+
+  function update() {
+    try {
+      var data = parse();
+      var t = getTemplate(currentTpl, { pageSize: pageSizeEl.value, theme: theme() });
+      lastHtml = renderHTML(data, t);
+      preview.srcdoc = lastHtml;
+
+      var res = lint(data, { pages: null, maxPages: parseInt(maxPagesEl.value, 10) || 0, compression: null });
+      renderReport(res.stats, res.issues);
+    } catch (e) {
+      report.innerHTML = '<div class="empty" style="color:var(--err)">✗ ' + esc2(e.message) + '</div>';
+    }
+  }
+
+  function schedule() {
+    clearTimeout(timer);
+    timer = setTimeout(update, 220);
+  }
+
+  src.addEventListener('input', schedule);
+  maxPagesEl.addEventListener('input', schedule);
+  pageSizeEl.addEventListener('change', update);
+  bodySizeEl.addEventListener('input', schedule);
+  sectionStyleEl.addEventListener('change', update);
+
+  Array.prototype.forEach.call(document.querySelectorAll('.swatch'), function (btn) {
+    btn.addEventListener('click', function () {
+      var c = btn.getAttribute('data-color');
+      currentAccent = currentAccent === c ? '' : c;
+      Array.prototype.forEach.call(document.querySelectorAll('.swatch'), function (b) {
+        b.classList.toggle('active', b.getAttribute('data-color') === currentAccent);
+      });
+      update();
+    });
+  });
+
+  document.getElementById('btnThemeReset').addEventListener('click', function () {
+    currentAccent = '';
+    bodySizeEl.value = '';
+    sectionStyleEl.value = '';
+    Array.prototype.forEach.call(document.querySelectorAll('.swatch'), function (b) {
+      b.classList.remove('active');
+    });
+    update();
+    toast('主题已重置');
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tpl]'), function (btn) {
+    btn.addEventListener('click', function () {
+      currentTpl = btn.getAttribute('data-tpl');
+      Array.prototype.forEach.call(document.querySelectorAll('[data-tpl]'), function (b) {
+        b.classList.toggle('active', b === btn);
+      });
+      update();
+    });
+  });
+
+  document.getElementById('btnSample').addEventListener('click', function () {
+    src.value = SAMPLE;
+    update();
+    toast('已载入示例');
+  });
+
+  document.getElementById('btnHtml').addEventListener('click', function () {
+    if (!lastHtml) return toast('还没有可下载的内容');
+    var name = 'resume-' + currentTpl + '.html';
+    var blob = new Blob([lastHtml], { type: 'text/html;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    toast('已下载 ' + name);
+  });
+
+  document.getElementById('btnPrint').addEventListener('click', function () {
+    var win = preview.contentWindow;
+    if (!win) return toast('预览尚未就绪');
+    win.focus();
+    win.print();
+  });
+
+  src.value = SAMPLE;
+  update();
+})();
+</script>
+</body>
+</html>

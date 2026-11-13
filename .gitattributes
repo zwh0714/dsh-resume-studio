@@ -1,0 +1,15 @@
+# 统一行尾，避免 Windows 检出把生成物改脏
+* text=auto
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.docx binary
+*.tgz binary
+*.zip binary
+
+# 生成物强制 LF：CI 里用 `git diff --exit-code docs/` 校验
+# 「试用页是否与 lib/ 同步」，任何行尾转换都会让这条护栏变成误报
+docs/index.html text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf

@@ -1,0 +1,81 @@
+{
+  "meta": {
+    "template": "minimal",
+    "maxPages": 1,
+    "lang": "en",
+    "pageSize": "A4"
+  },
+  "basics": {
+    "name": "Alex Chen",
+    "intent": "Target role: Senior Frontend Engineer",
+    "fields": [
+      ["Phone", "+1 555 0142"],
+      ["Email", "alex.chen@example.com"],
+      ["Experience", "7 years"],
+      ["Location", "Remote / UTC-5"]
+    ]
+  },
+  "sections": [
+    {
+      "kind": "paragraph",
+      "title": "Summary",
+      "text": "Frontend engineer with 7 years building design systems and data-heavy interfaces. Led migrations covering 220k lines with zero downtime; currently maintaining an OSS charting library used by **3 commercial dashboards**."
+    },
+    {
+      "kind": "timeline",
+      "title": "Experience",
+      "items": [
+        {
+          "head": "Northwind Labs",
+          "sub": "Senior Frontend Engineer",
+          "date": "2021.04 - Present",
+          "bullets": [
+            "Led the **design system** rewrite across 4 teams, cutting bundle size 38% and halving first paint",
+            "Built a **component testing** pipeline that caught 120+ regressions pre-release, reducing hotfixes by 60%",
+            "Drove accessibility to WCAG 2.2 AA across 90 screens, closing 340 audit findings in two quarters"
+          ]
+        },
+        {
+          "head": "Brightpath",
+          "sub": "Frontend Engineer",
+          "date": "2018.09 - 2021.03",
+          "bullets": [
+            "Shipped a **virtualised table** rendering 50k rows at 60fps, replacing a grid that froze above 2k",
+            "Migrated 220k lines from AngularJS to React incrementally with zero downtime"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "project",
+      "title": "Projects",
+      "items": [
+        {
+          "head": "Open chart kit",
+          "sub": "Maintainer",
+          "date": "2022.01 - Present",
+          "intro": "A dependency-free SVG charting library with 4.2k stars and 60+ contributors.",
+          "label": "Highlights:",
+          "bullets": [
+            "**Performance**: canvas fallback keeps 100k-point series interactive on low-end devices",
+            "**DX**: typed API and zero-config SSR support, adopted by 3 commercial dashboards"
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "list",
+      "title": "Skills",
+      "bullets": [
+        "**Languages**: TypeScript, JavaScript, HTML, CSS, some Rust",
+        "**Frameworks**: React, Next.js, Vue; testing with Vitest and Playwright",
+        "**Tooling**: Vite, pnpm, GitHub Actions, Docker"
+      ]
+    },
+    {
+      "kind": "list",
+      "title": "Education",
+      "bullets": ["State University · BSc Computer Science · 2014 - 2018"]
+    }
+  ]
+}

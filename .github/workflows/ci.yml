@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        node: [20, 22]
+        node: [20, 22, 24]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -18,7 +18,39 @@ jobs:
           node-version: ${{ matrix.node }}
       - run: npm install
       - run: npm test
+
       - name: smoke render (no PDF, no LibreOffice on CI)
         run: |
           node lib/cli.js init --out /tmp/resume.json
           node lib/cli.js render --in /tmp/resume.json --out /tmp/out --formats html,docx --templates classic,minimal,sidebar
+
+      - name: smoke render (English + Letter)
+        run: |
+          node lib/cli.js render --in examples/en-frontend.json --out /tmp/out-en --formats html,docx
+          node lib/cli.js render --in examples/zh-backend.json --out /tmp/out-zh --formats html,docx
+          grep -q 'lang="en"' /tmp/out-en/*.html
+          test -f "/tmp/out-en/Alex Chen-Resume.docx"
+          test -f "/tmp/out-zh/张明-简历.docx"
+
+          node -e "const fs=require('fs');const o=JSON.parse(fs.readFileSync('examples/en-frontend.json','utf8'));o.meta.pageSize='Letter';fs.writeFileSync('/tmp/letter.json',JSON.stringify(o))"
+          node lib/cli.js render --in /tmp/letter.json --out /tmp/out-letter --formats html,docx
+          grep -q 'size: Letter' /tmp/out-letter/*.html
+          grep -q '215.9mm' /tmp/out-letter/*.html
+
+      # docs/index.html 是生成的，必须与 lib/ 同步；不同步就红，避免 README 里的
+      # 试用页和 CLI 输出悄悄漂移
+      - name: playground matches the renderer
+        run: |
+          npm run build:site
+          git diff --exit-code docs/
+
+      # 校验 npm 实际发布物：files 白名单漏文件、bin 名解析不到，都会在这里失败
+      - name: package smoke
+        run: |
+          npm pack --pack-destination /tmp
+          mkdir -p /tmp/consumer && cd /tmp/consumer
+          npm init -y > /dev/null
+          npm install /tmp/*.tgz > /dev/null
+          npx dsh-resume-studio templates > /dev/null
+          npx dsh-resume-studio init --out ./r.json --lang en > /dev/null
+          test -f ./r.json

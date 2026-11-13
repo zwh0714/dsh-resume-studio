@@ -1,5 +1,67 @@
 # Changelog
 
+## [0.5.0] - 2026-11-12
+
+### Added
+
+- 新增 `paragraph` 模块，用于个人简介、自我评价这类整段文字，渲染为 `<p>` 与 Word 段落，不再作为列表项；支持空行分段与 `**加粗**`
+- `kind` 无法识别时按字段结构推断（有 `items` 用条目式、有 `text` 用段落、有 `bullets` 用列表），不再抛错；原始值记录在 `declaredKind`，由 `kind` 规则以 `info` 级别说明
+- `meta.theme`，用于在预设基础上调整外观：
+  - 颜色：`accent` / `text` / `muted` / `band` / `rule` / `name`
+  - `font`、`bodySize`（8–16pt）、`lineHeight`（0.85–1.6）、`sectionStyle`（`rule` / `tracked` / `bar`）
+  - 调整 `bodySize` 时其余字号与行高按同一比例缩放
+  - 取值非法的项被丢弃并回落到预设值
+- `tests/schema.test.mjs`（23 个用例）
+- 在线试用页增加主色、字号与分区样式控件
+
+### Changed
+
+- `normalize()` 改为幂等；`declaredKind` 在二次归一化时保留（`checkResume` 会再次归一化）
+- `applyTheme()` 在合并前调用 `normalizeTheme()`，接受带 `#` 的色值
+- `examples/` 两份示例各增加一个 `paragraph` 模块
+- `tools/verify-playground.mjs` 覆盖范围扩大到 108 项（2 份示例 × 3 版式 × 2 纸张 × 3 组主题）
+- `SKILL.md` 增加 `paragraph` 与 `list` 的选用说明和主题参数表
+- 测试数 65 → 88
+
+### Fixed
+
+- `eachBullet`、`estimateWeights`、`date` 与 `empty` 检查在遇到 `paragraph` 模块时访问未定义的 `s.items` 导致崩溃
+- 段落中的加粗字符计入加粗占比
+
+## [0.4.0] - 2026-11-12
+
+### Added
+
+- 新增系统 LibreOffice 兜底。转换引擎集中到 `lib/convert.js`，按 DSH LibreOffice Kit、系统 `soffice`、无引擎三级选择；`soffice` 使用独立 `UserInstallation` profile，避免与已打开的实例冲突。可用 `RESUME_SOFFICE` 或 `SOFFICE_PATH` 指定路径，`dsh-resume engine` 查看当前引擎
+- 新增零安装在线试用页 `docs/index.html`，由 `tools/build-playground.mjs` 将浏览器可运行的模块内联为单文件；`tools/verify-playground.mjs` 校验其输出与 Node 渲染器逐字节一致
+- 新增 `meta.pageSize`，支持 `A4` 与 `Letter`，HTML 的 `@page`、页面尺寸与 DOCX 的 `w:pgSz` 同步切换
+- `meta.lang` 生效：此前该字段存在但不影响输出。现在会切换骨架字段名、模块标题、`<html lang>`、文档标题、冒号全半角、页码文案与产物文件名（`<姓名>-简历` / `<Name>-Resume`）
+- 新增英文骨架：`init --lang en`、`resume_init({ lang: 'en' })`
+- 新增跨平台字体回退链，可用 `meta.font` 覆盖正文字体
+- 新增 `examples/`，中英文各一份可直接渲染的示例简历
+- 新增 `README.en.md`
+- 新增 `tests/i18n.test.mjs`（16 个用例）、`tests/convert.test.mjs`（6 个）、`tests/pdf.test.mjs`（3 个，无引擎时跳过）
+
+### Changed
+
+- `cli init` 与 `resume_init` 共用 `lib/skeleton.js`，不再各自维护一份骨架
+- 新增 `lib/locale.js`，集中管理面向用户的固定文案
+- 删除 `lib/pdf.js`，其职责并入 `lib/convert.js`
+- `resume_render` 返回值增加 `engine` 字段；`resume_init` 返回值增加 `lang` 与 `pageSize`
+- 测试数 40 → 65
+
+### Fixed
+
+- 英文简历被误报缺少电话或邮箱：联系方式改为同时识别标签名与字段值
+- `Present`、`Current`、`Now` 被判为时间格式不统一
+- 英文 `Education` 模块被要求填写内容
+- 英文弱动词（`responsible for`、`assisted` 等）纳入 `verbs` 检查；英文变化类动词同样要求给出数字
+
+### Known limitations
+
+- Word 与 LibreOffice 的分页存在 ±1–3% 差异，以「不超过 N 页」为目标
+- 系统 `soffice` 分支未在 CI 覆盖（CI 环境没有 LibreOffice），仅测试了引擎探测与错误路径
+
 ## [0.3.1] - 2026-10-20
 
 ### Added
